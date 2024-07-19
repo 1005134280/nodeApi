@@ -1,19 +1,15 @@
 const express = require('express');
-const { faker } = require('@faker-js/faker');
+
+
+const ProductsService = require('../services/products.service');
+const validatorHandler = require('../middlewares/validator.handler');
+const  { createProductSchema, updateProductSchema, getProductSchema } = require('../schemas/product.schema');
 
 const router = express.Router();
+const service = new ProductsService();
 
-router.get('/', (req, res) => {
-  const { size } = req.query;
-  const limit = size ? parseInt(size, 10) : 10; // Usando el parámetro de consulta `size`
-  const products = [];
-  for (let index = 0; index < limit; index++) {
-    products.push({
-      name: faker.commerce.productName(),
-      price: parseInt(faker.commerce.price(), 10),
-      image: faker.image.url(), // Corrigiendo el método para obtener una URL de imagen
-    });
-  }
+router.get('/', async (req, res) => {
+  const products = await service.find();
   res.json(products);
 });
 
@@ -21,30 +17,39 @@ router.get('/filter', (req, res) => {
   res.send('Yo soy un filter');
 });
 
-router.get('/:id', (req, res) => {
-  // const id= req.params.id;  // asi se hace de una forma normal en java
-  // esto siguiente es como se hace es ems6
-  const { id } = req.params;
+router.get('/:id',
+  validatorHandler(getProductSchema, 'params'),
+  async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const product = await service.findOne(id);
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
 
-  res.json({
-    name: 'Product 2',
-    price: 2000,
-  });
+router.post('/', async (req, res) => {
+  const body = req.body;
+  const newProduct = await service.create(body);
+  res.status(201).json(newProduct);
+});
+
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+    const product = await service.update(id, body);
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const rta = await service.delete(id);
+  res.json(rta);
 });
 
 module.exports = router;
-
-// este es el pasado sin meterle la libreria faker
-/* app.get('/products', (req, res) => {
-  res.json([
-    {
-      name: 'Prduct 1',
-      price: 1000,
-    },
-    {
-      name: 'Product 2',
-      price: 2000,
-    },
-  ]);
-});
- */
